@@ -120,7 +120,7 @@ public class GenericExporter {
         }
     }
 
-    public void export(RobotTree robotTree) throws IOException {
+    public boolean export(RobotTree robotTree) throws IOException {
         // Check that all necessary properties are filled in.
         RobotComponent robot = robotTree.getRoot();
         for (String prop : requires) {
@@ -129,16 +129,16 @@ public class GenericExporter {
                 JOptionPane.showMessageDialog(MainFrame.getInstance(),
                         "You need to fill in the '" + prop + "' property of your robot for this export to work.\nYou can edit this with the main settings for your robot by clicking on " + robot.getName() + ".",
                         "Missing Property", JOptionPane.ERROR_MESSAGE);
-                return;
+                return false;
             }
         }
 
         // Check that the robot is valid for export
         if (!robotTree.isRobotValid()) {
             JOptionPane.showMessageDialog(MainFrame.getInstance(),
-                    "Your robot is not ready for export, the red components are not quiet finished, please finish and try again.",
+                    "Your robot is not ready for export, the red components are not quite finished, please finish and try again.",
                     "Unfinished robot", JOptionPane.ERROR_MESSAGE);
-            return;
+            return false;
         }
 
         // Prepare the main context
@@ -160,8 +160,10 @@ public class GenericExporter {
 
         // Export to all files
         Collection<ExportFile> newFiles = getFiles();
+        boolean newProject = false;
         for (ExportFile file : newFiles) {
-            file.export(this);
+            if (file.export(this))
+              newProject = true;
         }
 
         MainFrame.getInstance().setStatus("Export succesful.");
@@ -181,6 +183,7 @@ public class GenericExporter {
                 Process pr = rt.exec(action);
             }
         }
+        return newProject;
     }
 
     /**
@@ -264,7 +267,7 @@ public class GenericExporter {
         Context context = new VelocityContext(rootContext);
         final Map<String, String> instructions = componentInstructions.get(comp.getBase().getName());
         context.put("ClassName", instructions.get("ClassName"));
-        context.put("Name", comp.getFullName());
+        context.put("Name", comp.getName());
         context.put("Short_Name", comp.getName());
         if (!comp.getSubsystem().isEmpty()) {
             context.put("Subsystem", comp.getSubsystem().substring(0, comp.getSubsystem().length() - 1));
@@ -316,10 +319,13 @@ public class GenericExporter {
             }
             ports.keySet().stream()
                     .filter(key -> module.equals(modules.get(key)))
-                    .forEach(key -> mapping.put(ports.get(key), component.getFullName() + " " + key));
+                    .forEach(key -> mapping.put(ports.get(key), component.getSubsystem() + delimiter + component.getName() + " " + key));
         });
         return mapping;
     }
+    
+    private String delimiter = "\u0008"; // unicode backspace character. No way is this going to be in some text field
+    private String delimiter2 = "\u2502"; // unicode pipe character.
 
     // TODO: make macro
     public Map<String, String> filterComponents(final String propertyName, RobotComponent robot) {
@@ -328,14 +334,15 @@ public class GenericExporter {
             for (String property : component.getPropertyKeys()) {
                 if (property.endsWith(propertyName)) {
                     // show speed controller type
-                    String delimiter = "\u0008"; // unicode backspace character. No way is this going to be in some text field
                     if (propertyName.equals("Channel (PWM)") && component.getBaseType().equals("Speed Controller")) {
                         String type1 = component.getProperty("Type").getValue().toString();
-                        mapping.put(component.getProperty(property).getValue().toString(), component.getFullName() + delimiter + type1);
+                        mapping.put(component.getProperty(property).getValue().toString(), component.getSubsystem() + delimiter + component.getName() + delimiter2 + type1);
                     } else if (propertyName.equals("Channel (PWM)") && component.getBaseType().equals("Servo")) {
-                        mapping.put(component.getProperty(property).getValue().toString(), component.getFullName() + delimiter + "Servo");
+                        mapping.put(component.getProperty(property).getValue().toString(), component.getSubsystem() + delimiter + component.getName() + delimiter2 + "Servo");
+                    } else if (propertyName.equals("Channel (PWM)") && component.getBaseType().equals("Nidec Brushless")) {
+                        mapping.put(component.getProperty(property).getValue().toString(), component.getSubsystem() + delimiter + component.getName() + delimiter2 + "Nidec Brushless");
                     } else {
-                        mapping.put(component.getProperty(property).getValue().toString(), component.getFullName());
+                        mapping.put(component.getProperty(property).getValue().toString(), component.getSubsystem() + delimiter + component.getName());
                     }
                 }
             }

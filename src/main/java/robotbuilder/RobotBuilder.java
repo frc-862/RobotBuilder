@@ -2,6 +2,7 @@
 package robotbuilder;
 
 import java.awt.EventQueue;
+import java.awt.Toolkit;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,6 +25,8 @@ public class RobotBuilder {
 
     public static final String VERSION = VERSION_MAJOR + "." + VERSION_MINOR;
 
+    public static final String WPILIB_VERSION = "2018";
+
     public static final String SAVE_FILE_TYPE = "yaml";
 
     public static void main(String[] args) {
@@ -43,6 +46,11 @@ public class RobotBuilder {
             MainFrame frame = MainFrame.getInstance();
             frame.openDefaultFile();
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            try {
+              frame.setIconImage(Toolkit.getDefaultToolkit().getImage(Utils.getResource("/icons/robotbuilder.png")));
+            } catch (Exception ex) {
+              Logger.getLogger(RobotBuilder.class.getName()).log(Level.INFO, null, ex);
+            }
             frame.setVisible(true);
         });
     }
